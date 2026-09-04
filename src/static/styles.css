@@ -433,7 +433,8 @@ button {
 }
 
 .close-modal,
-.close-login-modal {
+.close-login-modal,
+.close-announcements-modal {
   position: absolute;
   right: 12px;
   top: 8px;
@@ -665,10 +666,122 @@ footer {
   background-color: rgba(255, 255, 255, 0.3);
 }
 
+#announcement-banner-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
 .announcement-banner {
-  background-color: #4caf50;
-  color: white;
+  background-color: var(--success);
+  color: var(--primary-text);
   text-align: center;
-  padding: 15px;
+  padding: 12px 15px;
   font-weight: bold;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* Announcements management modal */
+.announcements-modal-content {
+  max-width: 520px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.announcements-modal-content h3 {
+  color: var(--primary);
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+#announcement-form .form-row {
+  display: flex;
+  gap: 12px;
+}
+
+#announcement-form .form-row .form-group {
+  flex: 1;
+}
+
+#announcement-form textarea {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.announcement-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#announcements-manage-list {
+  margin-top: 18px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.announcement-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.announcement-item.expired {
+  opacity: 0.6;
+}
+
+.announcement-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.announcement-item-message {
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.announcement-item-dates {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.announcement-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.announcement-item-actions button {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 15px;
+  cursor: pointer;
+}
+
+.announcement-edit-button {
+  background-color: var(--primary-light);
+  color: white;
+}
+
+.announcement-delete-button {
+  background-color: var(--error);
+  color: white;
 }
