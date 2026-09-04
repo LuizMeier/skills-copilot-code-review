@@ -14,6 +14,7 @@ db = client['mergington_high']
 activities_collection = db['activities']
 teachers_collection = db['teachers']
 announcements_collection = db['announcements']
+sessions_collection = db['sessions']
 
 # Methods
 

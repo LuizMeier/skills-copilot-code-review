@@ -141,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentUser = JSON.parse(savedUser);
         updateAuthUI();
         // Verify the stored user with the server
-        validateUserSession(currentUser.username);
+        validateUserSession();
       } catch (error) {
         console.error("Error parsing saved user", error);
         logout(); // Clear invalid data
@@ -153,10 +153,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Validate user session with the server
-  async function validateUserSession(username) {
+  async function validateUserSession() {
     try {
       const response = await fetch(
-        `/auth/check-session?username=${encodeURIComponent(username)}`
+        "/auth/check-session"
       );
 
       if (!response.ok) {
@@ -320,9 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const response = await fetch(
-        `/announcements/all?teacher_username=${encodeURIComponent(
-          currentUser.username
-        )}`
+        "/announcements/all"
       );
 
       if (!response.ok) {
@@ -399,9 +397,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const response = await fetch(
-        `/announcements/all?teacher_username=${encodeURIComponent(
-          currentUser.username
-        )}`
+        "/announcements/all"
       );
       const announcements = await response.json();
       const announcement = announcements.find((a) => a.id === announcementId);
@@ -426,9 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const response = await fetch(
-        `/announcements/${announcementId}?teacher_username=${encodeURIComponent(
-          currentUser.username
-        )}`,
+        `/announcements/${announcementId}`,
         { method: "DELETE" }
       );
 
@@ -463,12 +457,8 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const url = announcementId
-      ? `/announcements/${announcementId}?teacher_username=${encodeURIComponent(
-          currentUser.username
-        )}`
-      : `/announcements?teacher_username=${encodeURIComponent(
-          currentUser.username
-        )}`;
+      ? `/announcements/${announcementId}`
+      : "/announcements";
 
     try {
       const response = await fetch(url, {
@@ -516,6 +506,12 @@ document.addEventListener("DOMContentLoaded", () => {
     "click",
     closeAnnouncementsModalHandler
   );
+  closeAnnouncementsModal.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      closeAnnouncementsModalHandler();
+    }
+  });
 
   // Close announcements modal when clicking outside
   window.addEventListener("click", (event) => {

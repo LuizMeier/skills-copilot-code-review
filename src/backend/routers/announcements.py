@@ -3,13 +3,17 @@ Announcement endpoints for the High School Management System API
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
-from ..database import announcements_collection, teachers_collection
+from ..database import (
+    announcements_collection,
+    sessions_collection,
+    teachers_collection,
+)
 
 router = APIRouter(
     prefix="/announcements",
@@ -29,16 +33,21 @@ class AnnouncementUpdate(BaseModel):
     start_date: Optional[str] = None
 
 
-def _require_teacher(teacher_username: Optional[str]) -> Dict[str, Any]:
-    """Validate that the given username belongs to a signed-in teacher/admin"""
-    if not teacher_username:
+def _require_teacher(session_token: Optional[str]) -> Dict[str, Any]:
+    """Validate that the session belongs to a teacher/admin"""
+    if not session_token:
         raise HTTPException(
             status_code=401, detail="Authentication required for this action")
 
-    teacher = teachers_collection.find_one({"_id": teacher_username})
+    session = sessions_collection.find_one({
+        "_id": session_token,
+        "expires_at": {"$gt": datetime.now(timezone.utc)},
+    })
+    teacher = teachers_collection.find_one(
+        {"_id": session["username"]}) if session else None
     if not teacher:
         raise HTTPException(
-            status_code=401, detail="Invalid teacher credentials")
+            status_code=401, detail="Invalid or expired session")
 
     return teacher
 
@@ -49,15 +58,22 @@ def _validate_dates(start_date: Optional[str], expiration_date: str):
         raise HTTPException(
             status_code=400, detail="Expiration date is required")
 
-    if start_date and start_date > expiration_date:
+    try:
+        expiration = date.fromisoformat(expiration_date)
+        start = date.fromisoformat(start_date) if start_date else None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must be valid ISO dates")
+
+    if start and start > expiration:
         raise HTTPException(
             status_code=400,
             detail="Start date must be on or before the expiration date")
 
 
 def _serialize(announcement: Dict[str, Any]) -> Dict[str, Any]:
-    announcement["id"] = announcement.pop("_id")
-    return announcement
+    serialized = dict(announcement)
+    serialized["id"] = serialized.pop("_id")
+    return serialized
 
 
 @router.get("", response_model=List[Dict[str, Any]])
@@ -81,9 +97,11 @@ def get_active_announcements() -> List[Dict[str, Any]]:
 
 
 @router.get("/all", response_model=List[Dict[str, Any]])
-def get_all_announcements(teacher_username: Optional[str] = Query(None)) -> List[Dict[str, Any]]:
+def get_all_announcements(
+    session_token: Optional[str] = Cookie(None)
+) -> List[Dict[str, Any]]:
     """Get all announcements, including expired/future ones - requires teacher authentication"""
-    _require_teacher(teacher_username)
+    _require_teacher(session_token)
 
     return [
         _serialize(announcement)
@@ -95,10 +113,10 @@ def get_all_announcements(teacher_username: Optional[str] = Query(None)) -> List
 @router.post("/", response_model=Dict[str, Any])
 def create_announcement(
     announcement: AnnouncementCreate,
-    teacher_username: Optional[str] = Query(None)
+    session_token: Optional[str] = Cookie(None)
 ) -> Dict[str, Any]:
     """Create a new announcement - requires teacher authentication"""
-    teacher = _require_teacher(teacher_username)
+    teacher = _require_teacher(session_token)
     _validate_dates(announcement.start_date, announcement.expiration_date)
 
     new_announcement = {
@@ -118,10 +136,10 @@ def create_announcement(
 def update_announcement(
     announcement_id: str,
     announcement: AnnouncementUpdate,
-    teacher_username: Optional[str] = Query(None)
+    session_token: Optional[str] = Cookie(None)
 ) -> Dict[str, Any]:
     """Update an existing announcement - requires teacher authentication"""
-    _require_teacher(teacher_username)
+    _require_teacher(session_token)
 
     existing = announcements_collection.find_one({"_id": announcement_id})
     if not existing:
@@ -148,10 +166,10 @@ def update_announcement(
 @router.delete("/{announcement_id}")
 def delete_announcement(
     announcement_id: str,
-    teacher_username: Optional[str] = Query(None)
+    session_token: Optional[str] = Cookie(None)
 ) -> Dict[str, str]:
     """Delete an announcement - requires teacher authentication"""
-    _require_teacher(teacher_username)
+    _require_teacher(session_token)
 
     result = announcements_collection.delete_one({"_id": announcement_id})
     if result.deleted_count == 0:

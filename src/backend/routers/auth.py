@@ -2,10 +2,13 @@
 Authentication endpoints for the High School Management System API
 """
 
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
+import secrets
+from datetime import datetime, timedelta, timezone
 
-from ..database import teachers_collection, verify_password
+from fastapi import APIRouter, Cookie, HTTPException, Response
+from typing import Any, Dict, Optional
+
+from ..database import sessions_collection, teachers_collection, verify_password
 
 router = APIRouter(
     prefix="/auth",
@@ -14,7 +17,7 @@ router = APIRouter(
 
 
 @router.post("/login")
-def login(username: str, password: str) -> Dict[str, Any]:
+def login(username: str, password: str, response: Response) -> Dict[str, Any]:
     """Login a teacher account"""
     # Find the teacher in the database
     teacher = teachers_collection.find_one({"_id": username})
@@ -24,7 +27,17 @@ def login(username: str, password: str) -> Dict[str, Any]:
         raise HTTPException(
             status_code=401, detail="Invalid username or password")
 
-    # Return teacher information (excluding password)
+    session_token = secrets.token_urlsafe(32)
+    sessions_collection.insert_one({
+        "_id": session_token,
+        "username": teacher["username"],
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=8),
+    })
+    response.set_cookie(
+        "session_token", session_token, httponly=True, samesite="lax",
+        max_age=8 * 60 * 60
+    )
+
     return {
         "username": teacher["username"],
         "display_name": teacher["display_name"],
@@ -33,9 +46,14 @@ def login(username: str, password: str) -> Dict[str, Any]:
 
 
 @router.get("/check-session")
-def check_session(username: str) -> Dict[str, Any]:
-    """Check if a session is valid by username"""
-    teacher = teachers_collection.find_one({"_id": username})
+def check_session(session_token: Optional[str] = Cookie(None)) -> Dict[str, Any]:
+    """Check if a session is valid"""
+    session = sessions_collection.find_one({
+        "_id": session_token,
+        "expires_at": {"$gt": datetime.now(timezone.utc)},
+    }) if session_token else None
+    teacher = teachers_collection.find_one(
+        {"_id": session["username"]}) if session else None
 
     if not teacher:
         raise HTTPException(status_code=404, detail="Teacher not found")
